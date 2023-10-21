@@ -1,25 +1,41 @@
-import logo from './logo.svg';
-import './App.css';
+import React from "react";
+import Navbar from "./Navbar";
+import WebcamVideo from "./video";
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import Customize from "./customize";
 
-function App() {
+const headingStyle = {
+  color: "white",
+  fontSize: "46px",
+  fontFamily: "monospace",
+  textAlign: "center", // Center align the text
+};
+
+const App = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <Router>
+      <Navbar />
+      <Routes>
+        <Route path='/customize' element={<Customize />} />
+        <Route path='/video' element={<WebcamVideo />} />
+      </Routes>
+      <AppContent />
+    </Router>
+  );
+};
+
+const AppContent = () => {
+  const location = useLocation();
+
+  return (
+    <div>
+      {location.pathname === '/' && (
+        <center>
+          <h1 style={headingStyle}>Avatars for webcam</h1>
+        </center>
+      )}
     </div>
   );
-}
+};
 
 export default App;
