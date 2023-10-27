@@ -19,6 +19,7 @@ import {
   Tab,
   Tabpane,
 } from "./style";
+import { DownloadIcon } from "./svg";
 
 export default function Avataaar(props) {
   const canvasRef = useRef(null);
@@ -159,7 +160,7 @@ export default function Avataaar(props) {
       </Tabpanes>
       <DownloadRow>
         <Button onClick={onDownloadPNG}>
-           Save
+          <DownloadIcon /> Save
         </Button>{" "}
       </DownloadRow>
 

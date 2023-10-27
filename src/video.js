@@ -5,7 +5,7 @@ import WebcamWithOverlay from "./Overlay";
 function WebcamVideo() {
   return (
     <div>
-      <WebcamWithOverlay/> {/* Render the WebcamWithOverlay component */}
+      <WebcamWithOverlay /> {/* Render the WebcamWithOverlay component */}
     </div>
   );
 }

@@ -1,83 +1,85 @@
 import React, { useEffect, useRef } from 'react';
+import * as faceapi from 'face-api.js';
 
 function WebcamWithOverlay() {
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
+  const imageRef = useRef(null);
 
-  // Load an image from a URL
-  const loadImage = async (imageUrl) => {
-    return new Promise((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = reject;
-      image.src = imageUrl;
-    });
-  };
-
-  // Overlay the image on the canvas using OpenCV.js
-  const overlayImageOnCanvas = (image, cv, canvas, video) => {
-    const context = canvas.getContext('2d');
-
-    // Clear the canvas
-    context.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw the webcam frame
-    context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-
-    // Adjust the position and size as needed
-    const overlayX = 50;
-    const overlayY = 50;
-    const overlayWidth = 100;
-    const overlayHeight = 100;
-
-    // Use OpenCV.js to overlay the image
-    const src = cv.matFromImageData(image);
-    const dst = cv.matFromImageData(canvas);
-    const overlay = src.clone();
-
-    cv.resize(src, overlay, new cv.Size(overlayWidth, overlayHeight));
-    overlay.copyTo(dst.rowRange(overlayY, overlayY + overlayHeight).colRange(overlayX, overlayX + overlayWidth));
-
-    src.delete();
-    dst.delete();
-    overlay.delete();
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      imageRef.current.src = imageUrl;
+    }
   };
 
   useEffect(() => {
-    const loadOpenCv = async () => {
-      const cv = await window.cv;
+    const loadFaceAPI = async () => {
+      // Load face-api.js models and configurations
+      await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+      await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+      await faceapi.nets.faceExpressionNet.loadFromUri('/models');
+    };
 
-      // Initialize webcam and canvas
-      const video = webcamRef.current; // Assign the 'video' variable
+    const startVideo = async () => {
+      const video = webcamRef.current;
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          video.srcObject = stream;
+        } catch (error) {
+          console.error('Error accessing the webcam:', error);
+        }
+      } else {
+        console.error('getUserMedia is not supported by this browser.');
+      }
+    };
+
+    const detectFaceAndExpressions = async () => {
+      const video = webcamRef.current;
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
 
-      // Capture the webcam feed and overlay the image
-      const captureFrame = async () => {
-        if (video.paused || video.ended) return;
+      video.addEventListener('play', async () => {
+        const displaySize = { width: video.width, height: video.height };
+        faceapi.matchDimensions(canvas, displaySize);
 
-        // Capture webcam frame
-        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+        const faceDetector = new faceapi.TinyFaceDetectorOptions();
+        const landmarks = new faceapi.draw.DrawFaceLandmarksOptions();
+        const expressions = new faceapi.draw.DrawTextFieldOptions();
 
-        // Load and process your overlay image
-        const overlayImage = await loadImage('avatar/src/avatar (5).png');
-        overlayImageOnCanvas(overlayImage, cv, canvas, video);
+        const updateCanvas = async () => {
+          const detections = await faceapi.detectAllFaces(video, faceDetector).withFaceLandmarks().withFaceDescriptors().withFaceExpressions();
+          context.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Request the next frame
-        requestAnimationFrame(captureFrame);
-      };
+          const resizedDetections = faceapi.resizeResults(detections, displaySize);
+          faceapi.draw.drawDetections(canvas, resizedDetections);
+          faceapi.draw.drawFaceLandmarks(canvas, resizedDetections, landmarks);
+          faceapi.draw.drawFaceExpressions(canvas, resizedDetections, expressions);
 
-      // Start capturing frames
-      captureFrame();
+          // Overlay the image on top of the canvas
+          const overlayImage = imageRef.current;
+          context.drawImage(overlayImage, 0, 0, canvas.width, canvas.height);
+
+          requestAnimationFrame(updateCanvas);
+        };
+
+        updateCanvas();
+      });
     };
 
-    loadOpenCv();
+    loadFaceAPI();
+    startVideo();
+    detectFaceAndExpressions();
   }, []);
 
   return (
     <div className="WebcamWithOverlay">
       <video ref={webcamRef} autoPlay playsInline muted />
-      <canvas ref={canvasRef} />
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+      <input type="file" accept="image/*" onChange={handleImageUpload} />
+      <img ref={imageRef} style={{ display: 'none' }} />
     </div>
   );
 }
